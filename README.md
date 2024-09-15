@@ -52,13 +52,13 @@ Then you can do build application by typing:
 Windows:
 
 ```shell
-go build -o CapyMeme.exe
+go build -o MajorBot.exe
 ```
 
 Linux:
 
 ```shell
-go build -o CapyMeme
+go build -o MajorBot
 ```
 
 ## Usage
