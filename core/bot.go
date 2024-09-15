@@ -69,8 +69,10 @@ func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet boo
 		if !task["is_completed"].(bool) {
 			completingTask := client.completingTask(int(task["id"].(float64)), task["title"].(string))
 			if completingTask["is_completed"].(bool) {
-				helper.PrettyLog("success", fmt.Sprintf("%s | Claim Task: %v Completed | Award: %v", client.username, completingTask["streak"].(string), int(completingTask["award"].(float64))))
+				helper.PrettyLog("success", fmt.Sprintf("%s | Claim Task: %v Completed | Award: %v | Sleep 15s Before Completing Next Task...", client.username, completingTask["streak"].(string), int(completingTask["award"].(float64))))
 			}
+
+			time.Sleep(15 * time.Second)
 		}
 	}
 
