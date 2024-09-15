@@ -191,15 +191,15 @@ func ProcessBot(config *config.Config) {
 			switch choice {
 			case 1:
 				launchBot(account, swipeCoins, holdCoins, false, "")
-				helper.PrettyLog("info", fmt.Sprintf("%s | Launch Bot Finished", account.Username))
 			case 2:
 				isBindWallet := true
 				launchBot(account, swipeCoins, holdCoins, isBindWallet, walletAddress[j])
+				helper.PrettyLog("info", fmt.Sprintf("%s | Launch Bot Finished", account.Username))
 			}
 
 			<-semaphore
 
-			if choice == 2 {
+			if choice == 1 {
 				randomSleep := helper.RandomNumber(config.Int("RANDOM_SLEEP.MIN"), config.Int("RANDOM_SLEEP.MAX"))
 
 				helper.PrettyLog("info", fmt.Sprintf("%s | Launch Bot Finished, Sleeping for %v seconds..", account.Username, randomSleep))
@@ -213,7 +213,7 @@ func ProcessBot(config *config.Config) {
 	wg.Wait()
 
 	// Program utama berjalan terus menerus
-	if choice == 2 {
+	if choice == 1 {
 		select {} // block forever
 	}
 }

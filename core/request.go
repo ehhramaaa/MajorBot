@@ -336,24 +336,18 @@ func (c *Client) playHoldCoins(holdCoins int) map[string]interface{} {
 }
 
 // Bind Wallet
-func (c *Client) bindWallet(walletAddress string) map[string]interface{} {
+func (c *Client) bindWallet(walletAddress string) {
 	payload := map[string]string{
 		"address": walletAddress,
 	}
 
-	res, err := c.makeRequest("POST", "/users/address/", payload)
+	_, err := c.makeRequest("POST", "/users/address/", payload)
 	if err != nil {
 		helper.PrettyLog("error", fmt.Sprintf("%s | Failed to bind wallet: %v", c.username, err))
-		return nil
+		return
+	} else {
+		helper.PrettyLog("success", fmt.Sprintf("%s | Connect Wallet Successfully | Wallet Address: %v", c.username, walletAddress))
 	}
-
-	result, err := handleResponseMap(res)
-	if err != nil {
-		helper.PrettyLog("error", fmt.Sprintf("%s | Error handling response: %v", c.username, err))
-		return nil
-	}
-
-	return result
 }
 
 // Get Solve Durov Puzzle
@@ -402,6 +396,38 @@ func (c *Client) playDurovPuzzle(answer map[string]interface{}) map[string]inter
 	if err != nil {
 		helper.PrettyLog("error", fmt.Sprintf("%s | Error handling response: %v", c.username, err))
 		return nil
+	}
+
+	return result
+}
+
+// Check Roulette
+func (c *Client) checkRoulette() map[string]interface{} {
+	res, err := c.makeRequest("GET", "/roulette/", nil)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Failed to check roulette: %v", c.username, err))
+		return nil
+	}
+
+	result, err := handleResponseMap(res)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Error handling response: %v", c.username, err))
+	}
+
+	return result
+}
+
+// Play Roulette
+func (c *Client) playRoulette() map[string]interface{} {
+	res, err := c.makeRequest("POST", "/roulette/", nil)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Failed to play roulette: %v", c.username, err))
+		return nil
+	}
+
+	result, err := handleResponseMap(res)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Error handling response: %v", c.username, err))
 	}
 
 	return result

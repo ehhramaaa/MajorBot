@@ -23,8 +23,7 @@ func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet boo
 	}
 
 	if isBindWallet {
-		connectWallet := client.bindWallet(walletAddress)
-		fmt.Println(connectWallet)
+		client.bindWallet(walletAddress)
 		return
 	}
 
@@ -69,7 +68,7 @@ func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet boo
 		if !task["is_completed"].(bool) {
 			completingTask := client.completingTask(int(task["id"].(float64)), task["title"].(string))
 			if completingTask["is_completed"].(bool) {
-				helper.PrettyLog("success", fmt.Sprintf("%s | Claim Task: %s Completed | Award: %v | Sleep 15s Before Completing Next Task...", client.username, completingTask["title"].(string), int(completingTask["award"].(float64))))
+				helper.PrettyLog("success", fmt.Sprintf("%s | Claim Task: %s Completed | Award: %v | Sleep 15s Before Completing Next Task...", client.username, task["title"].(string), int(task["award"].(float64))))
 			} else {
 				helper.PrettyLog("error", fmt.Sprintf("%s | Claim Task: %v Failed | Sleep 15s Before Completing Next Task...", client.username, task["title"].(string)))
 			}
@@ -112,6 +111,15 @@ func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet boo
 					}
 				}
 			}
+		}
+	}
+
+	isRoulette := client.checkRoulette()
+	if _, exits := isRoulette["success"].(bool); exits && isRoulette["success"].(bool) {
+		playRoulette := client.playRoulette()
+		_, ok := playRoulette["rating_award"].(float64)
+		if !ok {
+			helper.PrettyLog("success", fmt.Sprintf("%s | Play Roulette Completed | Award: %v", client.username, int(playRoulette["rating_award"].(float64))))
 		}
 	}
 }

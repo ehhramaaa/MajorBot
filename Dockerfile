@@ -20,4 +20,4 @@ RUN go build -o main
 RUN chmod +x main
 
 # Jalankan aplikasi
-CMD ["./main -c 1"]
+CMD ["./main", "-c", "1"]
