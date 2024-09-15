@@ -78,11 +78,11 @@ go run main.go
 For Option 1
 
 ```shell
-go run main.go
+go run . -c 1
 ```
 
 For Option 2
 
 ```shell
-go run main.go
+go run . -c 2
 ```
