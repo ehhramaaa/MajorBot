@@ -17,7 +17,8 @@
 |  Auto Completing Task  |    ✅     |
 | Auto Play Swipe Coins  |    ✅     |
 |  Auto Play Hold Coins  |    ✅     |
-| Auto Play Durov Puzzle |    ❌     |
+|   Auto Play Roulette   |    ⌛     |
+| Auto Play Durov Puzzle |    ✅     |
 |  Auto Connect Wallet   |    ✅     |
 |   Random User Agent    |    ✅     |
 

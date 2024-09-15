@@ -69,7 +69,9 @@ func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet boo
 		if !task["is_completed"].(bool) {
 			completingTask := client.completingTask(int(task["id"].(float64)), task["title"].(string))
 			if completingTask["is_completed"].(bool) {
-				helper.PrettyLog("success", fmt.Sprintf("%s | Claim Task: %v Completed | Award: %v | Sleep 15s Before Completing Next Task...", client.username, completingTask["streak"].(string), int(completingTask["award"].(float64))))
+				helper.PrettyLog("success", fmt.Sprintf("%s | Claim Task: %s Completed | Award: %v | Sleep 15s Before Completing Next Task...", client.username, completingTask["title"].(string), int(completingTask["award"].(float64))))
+			} else {
+				helper.PrettyLog("error", fmt.Sprintf("%s | Claim Task: %v Failed | Sleep 15s Before Completing Next Task...", client.username, task["title"].(string)))
 			}
 
 			time.Sleep(15 * time.Second)
@@ -95,6 +97,21 @@ func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet boo
 
 		if _, exits := playHoldCoins["success"].(bool); exits && playHoldCoins["success"].(bool) {
 			helper.PrettyLog("success", fmt.Sprintf("%s | Playing Swipe Coins Completed | Award: %v", client.username, holdCoins))
+		}
+	}
+
+	isGetSolvePuzzle := client.getSolvePuzzle()
+	if answer, exits := isGetSolvePuzzle["tasks"].([]interface{}); exits && isGetSolvePuzzle["date"].(string) == time.Now().UTC().Format("2006-01-02") {
+		for _, item := range answer {
+			if taskMap, ok := item.(map[string]interface{}); ok {
+				checkDurovPuzzle := client.checkDurovPuzzle()
+				if _, exits := checkDurovPuzzle["success"].(bool); exits && checkDurovPuzzle["success"].(bool) {
+					playDurovPuzzle := client.playDurovPuzzle(taskMap)
+					if _, exits := playDurovPuzzle["correct"].(map[string][]int); exits {
+						helper.PrettyLog("success", fmt.Sprintf("%s | Play Solve Durov Puzzle Correct... %v", client.username))
+					}
+				}
+			}
 		}
 	}
 }

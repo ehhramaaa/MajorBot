@@ -190,12 +190,11 @@ func ProcessBot(config *config.Config) {
 
 			switch choice {
 			case 1:
-				isBindWallet := false
-				launchBot(account, swipeCoins, holdCoins, isBindWallet, walletAddress[j])
+				launchBot(account, swipeCoins, holdCoins, false, "")
 				helper.PrettyLog("info", fmt.Sprintf("%s | Launch Bot Finished", account.Username))
 			case 2:
 				isBindWallet := true
-				launchBot(account, swipeCoins, holdCoins, isBindWallet, "")
+				launchBot(account, swipeCoins, holdCoins, isBindWallet, walletAddress[j])
 			}
 
 			<-semaphore

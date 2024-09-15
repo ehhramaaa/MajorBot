@@ -16,7 +16,12 @@ type Client struct {
 }
 
 func (c *Client) makeRequest(method string, endpoint string, jsonBody interface{}) ([]byte, error) {
-	fullURL := "https://major.bot/api" + endpoint
+	var fullURL string
+	if endpoint == "https://raw.githubusercontent.com/dancayairdrop/blum/main/durov.json" {
+		fullURL = endpoint
+	} else {
+		fullURL = "https://major.bot/api" + endpoint
+	}
 
 	// Convert body to JSON
 	var reqBody []byte
@@ -34,8 +39,29 @@ func (c *Client) makeRequest(method string, endpoint string, jsonBody interface{
 		return nil, err
 	}
 
-	// Set header
-	setHeader(req, c.authToken)
+	if endpoint == "https://raw.githubusercontent.com/dancayairdrop/blum/main/durov.json" {
+		var header = map[string]string{
+			"accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+			"accept-language":           "en-US,en;q=0.9,id;q=0.8",
+			"cache-control":             "max-age=0",
+			"if-none-match":             "W/\"71f09c6fd3ed7a37cbd730c88157a3038913475c5af18078f9ecf5ad565cc800\"",
+			"priority":                  "u=0, i",
+			"sec-ch-ua":                 "\"Chromium\";v=\"128\", \"Not;A=Brand\";v=\"24\", \"Google Chrome\";v=\"128\"",
+			"sec-ch-ua-mobile":          "?0",
+			"sec-ch-ua-platform":        "\"Windows\"",
+			"sec-fetch-dest":            "document",
+			"sec-fetch-mode":            "navigate",
+			"sec-fetch-site":            "none",
+			"sec-fetch-user":            "?1",
+			"upgrade-insecure-requests": "1",
+		}
+
+		for key, value := range header {
+			req.Header.Set(key, value)
+		}
+	} else {
+		setHeader(req, c.authToken)
+	}
 
 	// Send request
 	resp, err := c.httpClient.Do(req)
@@ -288,7 +314,7 @@ func (c *Client) checkHoldCoins() map[string]interface{} {
 	return result
 }
 
-// Play Swipe Coins
+// Play Hold Coins
 func (c *Client) playHoldCoins(holdCoins int) map[string]interface{} {
 	payload := map[string]int{
 		"coins": holdCoins,
@@ -317,7 +343,58 @@ func (c *Client) bindWallet(walletAddress string) map[string]interface{} {
 
 	res, err := c.makeRequest("POST", "/users/address/", payload)
 	if err != nil {
-		helper.PrettyLog("error", fmt.Sprintf("%s | Failed to play hold coins: %v", c.username, err))
+		helper.PrettyLog("error", fmt.Sprintf("%s | Failed to bind wallet: %v", c.username, err))
+		return nil
+	}
+
+	result, err := handleResponseMap(res)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Error handling response: %v", c.username, err))
+		return nil
+	}
+
+	return result
+}
+
+// Get Solve Durov Puzzle
+func (c *Client) getSolvePuzzle() map[string]interface{} {
+	res, err := c.makeRequest("GET", "https://raw.githubusercontent.com/dancayairdrop/blum/main/durov.json", nil)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Failed to get solve puzzle: %v", c.username, err))
+		return nil
+	}
+
+	result, err := handleResponseMap(res)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Error handling response: %v", c.username, err))
+		return nil
+	}
+
+	return result
+}
+
+// Check Durov Puzzle
+func (c *Client) checkDurovPuzzle() map[string]interface{} {
+	res, err := c.makeRequest("GET", "/durov/", nil)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Failed to check durov puzzle: %v", c.username, err))
+		return nil
+	}
+
+	result, err := handleResponseMap(res)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Error handling response: %v", c.username, err))
+		return nil
+	}
+
+	return result
+}
+
+// Play Durov Puzzle
+func (c *Client) playDurovPuzzle(answer map[string]interface{}) map[string]interface{} {
+	res, err := c.makeRequest("POST", "/durov/", answer)
+	if err != nil {
+		helper.PrettyLog("error", fmt.Sprintf("%s | Failed to check durov puzzle: %v", c.username, err))
 		return nil
 	}
 
