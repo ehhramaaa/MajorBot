@@ -67,10 +67,12 @@ func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet boo
 	for _, task := range allTask {
 		if !task["is_completed"].(bool) {
 			completingTask := client.completingTask(int(task["id"].(float64)), task["title"].(string))
-			if completingTask["is_completed"].(bool) {
-				helper.PrettyLog("success", fmt.Sprintf("%s | Claim Task: %s Completed | Award: %v | Sleep 15s Before Completing Next Task...", client.username, task["title"].(string), int(task["award"].(float64))))
-			} else {
-				helper.PrettyLog("error", fmt.Sprintf("%s | Claim Task: %v Failed | Sleep 15s Before Completing Next Task...", client.username, task["title"].(string)))
+			if completingTask != nil {
+				if completingTask["is_completed"].(bool) {
+					helper.PrettyLog("success", fmt.Sprintf("%s | Claim Task: %s Completed | Award: %v | Sleep 15s Before Completing Next Task...", client.username, task["title"].(string), int(task["award"].(float64))))
+				} else {
+					helper.PrettyLog("error", fmt.Sprintf("%s | Claim Task: %v Failed | Sleep 15s Before Completing Next Task...", client.username, task["title"].(string)))
+				}
 			}
 
 			time.Sleep(15 * time.Second)
