@@ -157,10 +157,6 @@ func ProcessBot(config *config.Config) {
 		}
 	}
 
-	helper.PrettyLog("info", "Start Processing Account...")
-
-	time.Sleep(3 * time.Second)
-
 	var walletAddress []string
 
 	if choice == 2 {
@@ -178,6 +174,10 @@ func ProcessBot(config *config.Config) {
 		}
 
 	}
+
+	helper.PrettyLog("info", "Start Processing Account...")
+
+	time.Sleep(3 * time.Second)
 
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, maxThread)
