@@ -104,6 +104,20 @@ func getAccountFromQuery(account *Account) {
 	account.AllowWriteToPm = allowWriteToPm
 }
 
+func processBotForAccount(account *Account, walletAddress string, swipeCoins int, holdCoins int, isBindWallet bool) {
+	helper.PrettyLog("info", fmt.Sprintf("%s |Starting Bot...", account.Username))
+
+	launchBot(account, swipeCoins, holdCoins, isBindWallet, walletAddress)
+
+	helper.PrettyLog("info", fmt.Sprintf("%s | Launch Bot Finished...", account.Username))
+
+	if !isBindWallet {
+		randomSleep := helper.RandomNumber(config.Int("RANDOM_SLEEP.MIN"), config.Int("RANDOM_SLEEP.MAX"))
+		helper.PrettyLog("info", fmt.Sprintf("%s | Sleep %vs..", account.Username, randomSleep))
+		time.Sleep(time.Duration(randomSleep) * time.Second)
+	}
+}
+
 func ProcessBot(config *config.Config) {
 	queryPath := "./query.txt"
 	maxThread := config.Int("MAX_THREAD")
@@ -166,54 +180,40 @@ func ProcessBot(config *config.Config) {
 	}
 
 	var wg sync.WaitGroup
-
-	// Membuat semaphore dengan buffered channel
 	semaphore := make(chan struct{}, maxThread)
 
-	for j, query := range queryData {
-		wg.Add(1)
+	processAccount := func(index int, query string) {
+		defer wg.Done()
+		semaphore <- struct{}{}
 
-		// Goroutine untuk setiap job
-		go func(index int, query string) {
-			defer wg.Done()
+		account := &Account{QueryData: query}
+		getAccountFromQuery(account)
 
-			// Mengambil token dari semaphore sebelum menjalankan job
-			semaphore <- struct{}{}
+		isBindWallet := (choice == 2)
+		wallet := ""
+		if isBindWallet {
+			wallet = walletAddress[index]
+		}
 
-			account := &Account{
-				QueryData: query,
-			}
+		processBotForAccount(account, wallet, swipeCoins, holdCoins, isBindWallet)
 
-			getAccountFromQuery(account)
-
-			helper.PrettyLog("info", fmt.Sprintf("%s | Started Bot...", account.Username))
-
-			switch choice {
-			case 1:
-				launchBot(account, swipeCoins, holdCoins, false, "")
-			case 2:
-				isBindWallet := true
-				launchBot(account, swipeCoins, holdCoins, isBindWallet, walletAddress[j])
-				helper.PrettyLog("info", fmt.Sprintf("%s | Launch Bot Finished", account.Username))
-			}
-
-			<-semaphore
-
-			if choice == 1 {
-				randomSleep := helper.RandomNumber(config.Int("RANDOM_SLEEP.MIN"), config.Int("RANDOM_SLEEP.MAX"))
-
-				helper.PrettyLog("info", fmt.Sprintf("%s | Launch Bot Finished, Sleeping for %v seconds..", account.Username, randomSleep))
-
-				time.Sleep(time.Duration(randomSleep) * time.Second)
-			}
-		}(j, query)
+		<-semaphore
 	}
 
-	// Tunggu sampai semua worker selesai memproses pekerjaan
-	wg.Wait()
-
-	// Program utama berjalan terus menerus
-	if choice == 1 {
-		select {} // block forever
+	switch choice {
+	case 1:
+		for {
+			for j, query := range queryData {
+				wg.Add(1)
+				go processAccount(j, query)
+			}
+			wg.Wait() // Tunggu semua goroutine selesai
+		}
+	case 2:
+		for j, query := range queryData {
+			wg.Add(1)
+			go processAccount(j, query)
+		}
+		wg.Wait() // Tunggu semua goroutine selesai, lalu program selesai
 	}
 }
