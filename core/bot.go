@@ -36,7 +36,7 @@ func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet boo
 	_, ok := userData["squad_id"].(float64)
 	if !ok {
 		client.joinSquad()
-	} else if int(userData["squad_id"].(float64)) != 2414599412 {
+	} else if int64(userData["squad_id"].(float64)) != 2414599412 {
 		client.leaveSquad()
 		client.joinSquad()
 	}
