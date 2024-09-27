@@ -1,18 +1,17 @@
 [![Static Badge](https://img.shields.io/badge/Telegram-Bot%20Link-Link?style=for-the-badge&logo=Telegram&logoColor=white&logoSize=auto&color=blue)](https://t.me/major/start?startapp=5024522783)
-[![Static Badge](https://img.shields.io/badge/Telegram-Channel%20Link-Link?style=for-the-badge&logo=Telegram&logoColor=white&logoSize=auto&color=blue)](https://t.me/bansos_code)
-[![Static Badge](https://img.shields.io/badge/Telegram-Chat%20Link-Link?style=for-the-badge&logo=Telegram&logoColor=white&logoSize=auto&color=blue)](https://t.me/bansos_code_chat)
+[![Static Badge](https://img.shields.io/badge/Telegram-Channel%20Link-Link?style=for-the-badge&logo=Telegram&logoColor=white&logoSize=auto&color=blue)](https://t.me/skibidi_sigma_code)
+[![Static Badge](https://img.shields.io/badge/Telegram-Chat%20Link-Link?style=for-the-badge&logo=Telegram&logoColor=white&logoSize=auto&color=blue)](https://t.me/skibidi_sigma_chat)
 
-![demo](https://raw.githubusercontent.com/ehhramaaa/MajorBot/main/assets/Screenshot_1.png)
+![demo](https://raw.githubusercontent.com/ehhramaaa/MajorBot/main/demo/demo.png)
 
-## Recommendation before use
+# 🔥🔥 Support Cross Platform 🔥🔥
 
-# 🔥🔥 Go Version Tested 1.23.1 🔥🔥
+#### Go Version Tested 1.23.1
 
 ## Features
 
 |        Feature         | Supported |
 | :--------------------: | :-------: |
-|     Multithreading     |    ✅     |
 |     Use Query Data     |    ✅     |
 |  Auto Completing Task  |    ✅     |
 | Auto Play Swipe Coins  |    ✅     |
@@ -20,9 +19,11 @@
 |   Auto Play Roulette   |    ✅     |
 | Auto Play Durov Puzzle |    ✅     |
 |  Auto Connect Wallet   |    ✅     |
+|         Proxy          |    ✅     |
+|     Multithreading     |    ✅     |
 |   Random User Agent    |    ✅     |
 
-## [Settings](https://github.com/ehhramaaa/MajorBot/blob/main/config.yml)
+## [Settings](https://github.com/ehhramaaa/MajorBot/blob/main/configs/config.yml)
 
 |     Settings     |                          Description                          |
 | :--------------: | :-----------------------------------------------------------: |
@@ -35,11 +36,9 @@
 
 Before you begin, make sure you have the following installed:
 
-- [Golang](https://go.dev/doc/install) **version > 1.22**
+- [Golang](https://go.dev/doc/install) **version > 1.23**
 
 ## Installation
-
-You can download the [**repository**](https://github.com/ehhramaaa/agent301.git) by cloning it to your system and installing the necessary dependencies:
 
 ```shell
 git clone https://github.com/ehhramaaa/MajorBot.git
@@ -48,7 +47,7 @@ go mod tidy
 go run .
 ```
 
-Then you can do build application by typing:
+## Or you can build to app by typing
 
 Windows:
 
