@@ -1,19 +1,18 @@
 package core
 
 import (
-	"MajorBot/helper"
+	"MajorBot/tools"
 
 	"github.com/mileusna/useragent"
 )
 
 func generateRandomUserAgent() (string, string) {
-	userAgents := helper.ReadFileTxt("./core/useragent.txt")
-	if userAgents == nil {
-		helper.PrettyLog("error", "userAgent data not found")
+	userAgents, err := tools.ReadFileTxt("./configs/useragent.txt")
+	if err != nil {
 		return "", ""
 	}
 
-	userAgent := userAgents[helper.RandomNumber(0, len(userAgents))]
+	userAgent := userAgents[tools.RandomNumber(0, len(userAgents))]
 
 	os := useragent.Parse(userAgent).OS
 

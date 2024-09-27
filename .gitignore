@@ -1,6 +1,7 @@
 # Mengabaikan file log
 query.txt
 wallet_address.txt
+proxy.txt
 
 # Mengabaikan folder build
 raw/

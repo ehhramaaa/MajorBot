@@ -1,77 +1,105 @@
 package core
 
 import (
-	"MajorBot/helper"
+	"MajorBot/tools"
 	"fmt"
-	"net/http"
 	"time"
+
+	"github.com/gookit/config/v2"
 )
 
-func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet bool, walletAddress string) {
-	client := &Client{
-		username:   account.Username,
-		httpClient: &http.Client{},
+func (c *Client) autoCompleteTask() int {
+	swipeCoins := tools.RandomNumber(config.Int("SWIPE_COINS.MIN"), config.Int("SWIPE_COINS.MAX"))
+	holdCoins := tools.RandomNumber(config.Int("HOLD_COINS.MIN"), config.Int("HOLD_COINS.MAX"))
+
+	var points int
+
+	token, err := c.getToken(c.account.queryData)
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to get token: %v", err))
+		return points
 	}
 
-	token := client.getToken(account)
-
-	if len(token["access_token"].(string)) > 0 {
-		client.authToken = fmt.Sprintf("Bearer %s", token["access_token"].(string))
+	if token != "" {
+		c.accessToken = fmt.Sprintf("Bearer %s", token)
 	} else {
-		helper.PrettyLog("error", "Failed To Get Token")
-		return
+		tools.Logger("error", "Token not found")
+		return points
 	}
 
-	if isBindWallet {
-		client.bindWallet(walletAddress)
-		return
+	userData, err := c.getUserInfo()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to get user info: %v", c.account.username, err))
+		return points
 	}
 
-	userData := client.getUserInfo(account)
+	points = int(userData["rating"].(float64))
 
-	if _, exits := userData["username"].(string); exits && userData["username"].(string) == account.Username {
-		helper.PrettyLog("success", fmt.Sprintf("%s | Points: %v", client.username, int(userData["rating"].(float64))))
+	tools.Logger("success", fmt.Sprintf("| %s | Points: %v", c.account.username, points))
+
+	if squadId, exits := userData["squad_id"].(float64); exits {
+		if int64(squadId) != 2414599412 {
+			c.leaveSquad()
+			c.joinSquad()
+		}
+	} else {
+		c.joinSquad()
 	}
 
-	_, ok := userData["squad_id"].(float64)
-	if !ok {
-		client.joinSquad()
-	} else if int64(userData["squad_id"].(float64)) != 2414599412 {
-		client.leaveSquad()
-		client.joinSquad()
+	squadInfo, err := c.getSquad()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to get squad info: %v", c.account.username, err))
 	}
 
-	getSquad := client.getSquad()
-
-	if _, exits := getSquad["name"].(string); exits {
-		helper.PrettyLog("success", fmt.Sprintf("%s | Squad: %s | Points: %v | Member: %v", client.username, getSquad["name"].(string), int(getSquad["rating"].(float64)), int(getSquad["members_count"].(float64))))
+	if squadInfo != nil {
+		tools.Logger("success", fmt.Sprintf("| %s | Squad: %s | Points: %v | Member: %v", c.account.username, squadInfo["name"].(string), int(squadInfo["rating"].(float64)), int(squadInfo["members_count"].(float64))))
 	}
 
-	// dailyStreak := client.streak()
-	// fmt.Println(dailyStreak)
+	dailyVisit, err := c.visit()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to visit: %v", c.account.username, err))
+	}
 
-	dailyVisit := client.visit()
-	if dailyVisit["is_increased"].(bool) {
-		helper.PrettyLog("success", fmt.Sprintf("%s | Daily Streak: %v", client.username, int(dailyVisit["streak"].(float64))))
+	if dailyVisit != nil {
+		if dailyVisit["is_increased"].(bool) {
+			tools.Logger("success", fmt.Sprintf("| %s | Daily Streak: %v", c.account.username, int(dailyVisit["streak"].(float64))))
+		}
 	}
 
 	var allTask []map[string]interface{}
 
-	dailyTask := client.getDailyTask()
+	dailyTask, err := c.getDailyTask()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to get daily task: %v", c.account.username, err))
+	}
 
-	anotherTask := client.getAnotherTask()
+	anotherTask, err := c.getAnotherTask()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to get another task: %v", c.account.username, err))
+	}
 
-	allTask = append(allTask, dailyTask...)
-	allTask = append(allTask, anotherTask...)
+	for _, value := range dailyTask {
+		task := value.(map[string]interface{})
+		allTask = append(allTask, task)
+	}
+
+	for _, value := range anotherTask {
+		task := value.(map[string]interface{})
+		allTask = append(allTask, task)
+	}
 
 	for _, task := range allTask {
 		if !task["is_completed"].(bool) {
-			completingTask := client.completingTask(int(task["id"].(float64)), task["title"].(string))
+			completingTask, err := c.completingTask(int(task["id"].(float64)), task["title"].(string))
+			if err != nil {
+				tools.Logger("error", fmt.Sprintf("| %s | Failed to completing task: %v", c.account.username, err))
+			}
+
 			if completingTask != nil {
 				if completingTask["is_completed"].(bool) {
-					helper.PrettyLog("success", fmt.Sprintf("%s | Claim Task: %s Completed | Award: %v | Sleep 15s Before Completing Next Task...", client.username, task["title"].(string), int(task["award"].(float64))))
+					tools.Logger("success", fmt.Sprintf("| %s | Claim Task: %s Completed | Award: %v | Sleep 15s Before Completing Next Task...", c.account.username, task["title"].(string), int(task["award"].(float64))))
 				} else {
-					helper.PrettyLog("error", fmt.Sprintf("%s | Claim Task: %v Failed | Sleep 15s Before Completing Next Task...", client.username, task["title"].(string)))
+					tools.Logger("error", fmt.Sprintf("| %s | Claim Task: %v Failed | Sleep 15s Before Completing Next Task...", c.account.username, task["title"].(string)))
 				}
 			}
 
@@ -79,49 +107,133 @@ func launchBot(account *Account, swipeCoins int, holdCoins int, isBindWallet boo
 		}
 	}
 
-	isSwipeCoins := client.checkSwipeCoins()
-	if _, exits := isSwipeCoins["success"].(bool); exits && isSwipeCoins["success"].(bool) {
-		helper.PrettyLog("success", fmt.Sprintf("%s | Start Playing Swipe Coins After 5s...", client.username))
-		time.Sleep(5 * time.Second)
-		playSwipeCoins := client.playSwipeCoins(swipeCoins)
+	isSwipeCoins, err := c.checkSwipeCoins()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to check swipe coins: %v", c.account.username, err))
+	}
 
-		if _, exits := playSwipeCoins["success"].(bool); exits && playSwipeCoins["success"].(bool) {
-			helper.PrettyLog("success", fmt.Sprintf("%s | Playing Swipe Coins Completed | Award: %v", client.username, swipeCoins))
+	if isSwipeCoins {
+		tools.Logger("success", fmt.Sprintf("| %s | Start Playing Swipe Coins After 5s...", c.account.username))
+
+		time.Sleep(5 * time.Second)
+
+		isPlaySwipeCoins, err := c.playSwipeCoins(swipeCoins)
+		if err != nil {
+			tools.Logger("error", fmt.Sprintf("| %s | Failed to play swipe coins: %v", c.account.username, err))
+		}
+
+		if isPlaySwipeCoins {
+			tools.Logger("success", fmt.Sprintf("| %s | Playing Swipe Coins Completed | Award: %v", c.account.username, swipeCoins))
 		}
 	}
 
-	isHoldCoins := client.checkHoldCoins()
-	if _, exits := isHoldCoins["success"].(bool); exits && isHoldCoins["success"].(bool) {
-		helper.PrettyLog("success", fmt.Sprintf("%s | Start Playing Hold Coins After 5s...", client.username))
-		time.Sleep(5 * time.Second)
-		playHoldCoins := client.playHoldCoins(holdCoins)
+	isHoldCoins, err := c.checkHoldCoins()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to check hold coins: %v", c.account.username, err))
+	}
 
-		if _, exits := playHoldCoins["success"].(bool); exits && playHoldCoins["success"].(bool) {
-			helper.PrettyLog("success", fmt.Sprintf("%s | Playing Swipe Coins Completed | Award: %v", client.username, holdCoins))
+	if isHoldCoins {
+		tools.Logger("success", fmt.Sprintf("| %s | Start Playing Hold Coins After 5s...", c.account.username))
+
+		time.Sleep(5 * time.Second)
+
+		isPlayHoldCoins, err := c.playHoldCoins(holdCoins)
+		if err != nil {
+			tools.Logger("error", fmt.Sprintf("| %s | Failed to play hold coins: %v", c.account.username, err))
+		}
+
+		if isPlayHoldCoins {
+			tools.Logger("success", fmt.Sprintf("| %s | Playing Swipe Coins Completed | Award: %v", c.account.username, holdCoins))
 		}
 	}
 
-	isGetSolvePuzzle := client.getSolvePuzzle()
-	if answer, exits := isGetSolvePuzzle["tasks"].([]interface{}); exits && isGetSolvePuzzle["date"].(string) == time.Now().UTC().Format("2006-01-02") {
-		for _, item := range answer {
-			if taskMap, ok := item.(map[string]interface{}); ok {
-				checkDurovPuzzle := client.checkDurovPuzzle()
-				if _, exits := checkDurovPuzzle["success"].(bool); exits && checkDurovPuzzle["success"].(bool) {
-					playDurovPuzzle := client.playDurovPuzzle(taskMap)
-					if _, exits := playDurovPuzzle["correct"].(map[string][]int); exits {
-						helper.PrettyLog("success", fmt.Sprintf("%s | Play Solve Durov Puzzle Correct... %v", client.username))
+	solvePuzzle, err := c.getSolvePuzzle()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to get solve durov puzzle: %v", c.account.username, err))
+	}
+
+	if solvePuzzle != nil {
+		if answer, exits := solvePuzzle["tasks"].([]interface{}); exits && solvePuzzle["date"].(string) == time.Now().UTC().Format("2006-01-02") {
+			for _, item := range answer {
+				if taskMap, ok := item.(map[string]interface{}); ok {
+
+					isDurovPuzzle, err := c.checkDurovPuzzle()
+					if err != nil {
+						tools.Logger("error", fmt.Sprintf("| %s | Failed to check durov puzzle: %v", c.account.username, err))
+					}
+
+					if isDurovPuzzle {
+						playDurovPuzzle, err := c.playDurovPuzzle(taskMap)
+						if err != nil {
+							tools.Logger("error", fmt.Sprintf("| %s | Failed to play durov puzzle: %v", c.account.username, err))
+						}
+
+						if playDurovPuzzle != nil {
+							if _, exits := playDurovPuzzle["correct"].(map[string][]int); exits {
+								tools.Logger("success", fmt.Sprintf("| %s | Play Solve Durov Puzzle Correct... %v", c.account.username))
+							}
+						}
+
 					}
 				}
 			}
 		}
 	}
 
-	isRoulette := client.checkRoulette()
-	if _, exits := isRoulette["success"].(bool); exits && isRoulette["success"].(bool) {
-		playRoulette := client.playRoulette()
-		_, ok := playRoulette["rating_award"].(float64)
-		if !ok {
-			helper.PrettyLog("success", fmt.Sprintf("%s | Play Roulette Completed | Award: %v", client.username, int(playRoulette["rating_award"].(float64))))
+	isRoulette, err := c.checkRoulette()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to check roulette: %v", c.account.username, err))
+	}
+
+	if isRoulette {
+		tools.Logger("success", fmt.Sprintf("| %s | Start Playing Roulette Coins After 5s...", c.account.username))
+
+		time.Sleep(5 * time.Second)
+
+		playRoulette, err := c.playRoulette()
+		if err != nil {
+			tools.Logger("error", fmt.Sprintf("| %s | Failed to play roulette: %v", c.account.username, err))
 		}
+
+		if playRoulette != nil {
+			if award, exits := playRoulette["rating_award"].(float64); exits {
+				tools.Logger("success", fmt.Sprintf("| %s | Play Roulette Completed | Award: %v", c.account.username, int(award)))
+			}
+		}
+	}
+
+	userData, err = c.getUserInfo()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to get user info: %v", c.account.username, err))
+		return points
+	}
+
+	if userData != nil {
+		points = int(userData["rating"].(float64))
+		tools.Logger("success", fmt.Sprintf("| %s | Update Points: %v", c.account.username, points))
+	}
+
+	return points
+}
+
+func (c *Client) connectWallet() {
+	token, err := c.getToken(c.account.queryData)
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to get token: %v", c.account.username, err))
+		return
+	}
+
+	if token != "" {
+		c.accessToken = fmt.Sprintf("Bearer %s", token)
+	} else {
+		tools.Logger("error", "Token not found")
+		return
+	}
+
+	err = c.bindWallet()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("| %s | Failed to connect wallet: %v", c.account.username, err))
+	} else {
+		tools.Logger("success", fmt.Sprintf("| %s | Successfully connect wallet address: %s", c.account.username, c.account.walletAddress))
 	}
 }

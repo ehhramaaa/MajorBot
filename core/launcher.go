@@ -1,10 +1,11 @@
 package core
 
 import (
-	"MajorBot/helper"
+	"MajorBot/tools"
 	"encoding/json"
-	"flag"
 	"fmt"
+	"net"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -12,208 +13,221 @@ import (
 	"github.com/gookit/config/v2"
 )
 
-type Account struct {
-	QueryId        string
-	UserId         int
-	Username       string
-	FirstName      string
-	LastName       string
-	AuthDate       string
-	Hash           string
-	AllowWriteToPm bool
-	LanguageCode   string
-	QueryData      string
-}
-
-func getAccountFromQuery(account *Account) {
-	// Parsing Query To Get Username
-	value, err := url.ParseQuery(account.QueryData)
+func (account *Account) parsingQueryData() {
+	value, err := url.ParseQuery(account.queryData)
 	if err != nil {
-		helper.PrettyLog("error", fmt.Sprintf("Failed to parse query: %v", err.Error()))
-		return
+		tools.Logger("error", fmt.Sprintf("Failed to parse query data: %s", err))
 	}
 
 	if len(value.Get("query_id")) > 0 {
-		account.QueryId = value.Get("query_id")
+		account.queryId = value.Get("query_id")
 	}
 
 	if len(value.Get("auth_date")) > 0 {
-		account.AuthDate = value.Get("auth_date")
+		account.authDate = value.Get("auth_date")
 	}
 
 	if len(value.Get("hash")) > 0 {
-		account.Hash = value.Get("hash")
+		account.hash = value.Get("hash")
 	}
 
 	userParam := value.Get("user")
 
-	// Mendekode string JSON
 	var userData map[string]interface{}
 	err = json.Unmarshal([]byte(userParam), &userData)
 	if err != nil {
-		panic(err)
+		tools.Logger("error", fmt.Sprintf("Failed to parse user data: %s", err))
 	}
 
-	// Mengambil ID dan username dari hasil decode
-	userIDFloat, ok := userData["id"].(float64)
+	userId, ok := userData["id"].(float64)
 	if !ok {
-		helper.PrettyLog("error", "Failed to convert ID to float64")
-		return
+		tools.Logger("error", "Failed to convert ID to float64")
 	}
 
-	account.UserId = int(userIDFloat)
+	account.userId = int(userId)
 
-	// Ambil username
 	username, ok := userData["username"].(string)
 	if !ok {
-		helper.PrettyLog("error", "Failed to get username")
+		tools.Logger("error", "Failed to get username from query")
 		return
 	}
-	account.Username = username
+
+	account.username = username
 
 	// Ambil first name
 	firstName, ok := userData["first_name"].(string)
 	if !ok {
-		helper.PrettyLog("error", "Failed to get first_name")
-		return
+		tools.Logger("error", "Failed to get first name from query")
 	}
-	account.FirstName = firstName
+
+	account.firstName = firstName
 
 	// Ambil first name
 	lastName, ok := userData["last_name"].(string)
 	if !ok {
-		helper.PrettyLog("error", "Failed to get last_name")
-		return
+		tools.Logger("error", "Failed to get last name from query")
 	}
-	account.LastName = lastName
+	account.lastName = lastName
 
 	// Ambil language code
 	languageCode, ok := userData["language_code"].(string)
 	if !ok {
-		helper.PrettyLog("error", "Failed to get language_code")
-		return
+		tools.Logger("error", "Failed to get language code from query")
 	}
-	account.LanguageCode = languageCode
+	account.languageCode = languageCode
 
 	// Ambil allowWriteToPm
 	allowWriteToPm, ok := userData["allows_write_to_pm"].(bool)
 	if !ok {
-		helper.PrettyLog("error", "Failed to get allows_write_to_pm")
-		return
+		tools.Logger("error", "Failed to get allows write to pm from query")
 	}
-	account.AllowWriteToPm = allowWriteToPm
+
+	account.allowWriteToPm = allowWriteToPm
 }
 
-func processBotForAccount(account *Account, walletAddress string, swipeCoins int, holdCoins int, isBindWallet bool) {
-	helper.PrettyLog("info", fmt.Sprintf("%s |Starting Bot...", account.Username))
+func (account *Account) worker(wg *sync.WaitGroup, semaphore *chan struct{}, totalPointsChan *chan int, index int, query string, proxyList []string, walletList []string) {
+	defer wg.Done()
+	*semaphore <- struct{}{}
 
-	launchBot(account, swipeCoins, holdCoins, isBindWallet, walletAddress)
+	var points int
+	var proxy string
 
-	helper.PrettyLog("info", fmt.Sprintf("%s | Launch Bot Finished...", account.Username))
-
-	if !isBindWallet {
-		randomSleep := helper.RandomNumber(config.Int("RANDOM_SLEEP.MIN"), config.Int("RANDOM_SLEEP.MAX"))
-		helper.PrettyLog("info", fmt.Sprintf("%s | Sleep %vs..", account.Username, randomSleep))
-		time.Sleep(time.Duration(randomSleep) * time.Second)
-	}
-}
-
-func ProcessBot(config *config.Config) {
-	queryPath := "./query.txt"
-	maxThread := config.Int("MAX_THREAD")
-	swipeCoins := helper.RandomNumber(config.Int("SWIPE_COINS.MIN"), config.Int("SWIPE_COINS.MAX"))
-	holdCoins := helper.RandomNumber(config.Int("HOLD_COINS.MIN"), config.Int("HOLD_COINS.MAX"))
-
-	queryData := helper.ReadFileTxt(queryPath)
-	if queryData == nil {
-		helper.PrettyLog("error", "Query data not found")
-		return
+	if len(proxyList) > 0 {
+		proxy = proxyList[index%len(proxyList)]
 	}
 
-	helper.PrettyLog("info", fmt.Sprintf("%v Query Data Detected", len(queryData)))
+	tools.Logger("info", fmt.Sprintf("| %s | Starting Bot...", account.username))
 
-	var choice int
-	flagArg := flag.Int("c", 0, "Input Choice With Flag -c, 1 = Auto Completing All Task (Unlimited Loop), 2 = Connect Wallet")
+	setDns(&net.Dialer{})
 
-	// Parse flag dari command line
-	flag.Parse()
-
-	if *flagArg > 2 {
-		helper.PrettyLog("error", "Invalid Flag Choice")
-	} else if *flagArg != 0 {
-		choice = *flagArg
+	client := Client{
+		account: *account,
+		proxy:   proxy,
+		httpClient: &http.Client{
+			Timeout: 15 * time.Second,
+		},
 	}
 
-	if choice == 0 {
-		helper.PrettyLog("1", "Auto Completing All Task (Unlimited Loop)")
-		helper.PrettyLog("2", "Connect Wallet")
-
-		helper.PrettyLog("input", "Select Your Choice: ")
-
-		_, err := fmt.Scan(&choice)
+	if len(client.proxy) > 0 {
+		err := client.setProxy()
 		if err != nil {
-			helper.PrettyLog("error", "Selection Invalid")
-			return
+			tools.Logger("error", fmt.Sprintf("| %s | Failed to set proxy: %v", account.username, err))
+		} else {
+			tools.Logger("success", fmt.Sprintf("| %s | Proxy Successfully Set...", account.username))
 		}
 	}
 
-	var walletAddress []string
-
-	if choice == 2 {
-		walletAddress = helper.ReadFileTxt("./wallet_address.txt")
-		if walletAddress == nil {
-			helper.PrettyLog("error", "Wallet Address Data Not Found")
-			return
-		}
-
-		helper.PrettyLog("info", fmt.Sprintf("%v Wallet Address Detected", len(walletAddress)))
-
-		if len(walletAddress) != len(queryData) {
-			helper.PrettyLog("error", fmt.Sprintf("Wallet Address Count (%v) Must Match With Query Data Count (%v)", len(walletAddress), len(queryData)))
-			return
-		}
-
+	infoIp, err := client.checkIp()
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("Failed to check ip: %v", err))
 	}
 
-	helper.PrettyLog("info", "Start Processing Account...")
+	tools.Logger("success", fmt.Sprintf("| %s | Ip: %s | City: %s | Country: %s | Provider: %s", account.username, infoIp["ip"].(string), infoIp["city"].(string), infoIp["country"].(string), infoIp["org"].(string)))
 
-	time.Sleep(3 * time.Second)
+	if len(walletList) > 0 {
+		account.walletAddress = walletList[index]
+		client.connectWallet()
+	} else {
+		points = client.autoCompleteTask()
+	}
+
+	*totalPointsChan <- points
+
+	<-*semaphore
+}
+
+func LaunchBot(selectedTools int) {
+	queryPath := "configs/query.txt"
+	proxyPath := "configs/proxy.txt"
+	walletAddressPath := "configs/wallet_address.txt"
+	maxThread := config.Int("MAX_THREAD")
+	isUseProxy := config.Bool("USE_PROXY")
+
+	queryData, err := tools.ReadFileTxt(queryPath)
+	if err != nil {
+		tools.Logger("error", fmt.Sprintf("Query Data Not Found: %s", err))
+		return
+	}
+
+	tools.Logger("info", fmt.Sprintf("%v Query Data Detected", len(queryData)))
 
 	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, maxThread)
+	var semaphore chan struct{}
+	var proxyList, walletList []string
 
-	processAccount := func(index int, query string) {
-		defer wg.Done()
-		semaphore <- struct{}{}
-
-		account := &Account{QueryData: query}
-		getAccountFromQuery(account)
-
-		isBindWallet := (choice == 2)
-		wallet := ""
-		if isBindWallet {
-			wallet = walletAddress[index]
+	if isUseProxy {
+		proxyList, err = tools.ReadFileTxt(proxyPath)
+		if err != nil {
+			tools.Logger("error", fmt.Sprintf("Proxy Data Not Found: %s", err))
 		}
 
-		processBotForAccount(account, wallet, swipeCoins, holdCoins, isBindWallet)
-
-		<-semaphore
+		tools.Logger("info", fmt.Sprintf("%v Proxy Detected", len(proxyList)))
 	}
 
-	switch choice {
+	if selectedTools == 2 {
+		walletList, err = tools.ReadFileTxt(walletAddressPath)
+		if err != nil {
+			tools.Logger("error", "Wallet Address Data Not Found")
+			return
+		}
+
+		tools.Logger("info", fmt.Sprintf("%v Wallet Address Detected", len(walletList)))
+
+		if len(walletList) != len(queryData) {
+			tools.Logger("error", fmt.Sprintf("Wallet Address Count (%v) Must Match With Query Data Count (%v)", len(walletList), len(queryData)))
+			return
+		}
+	}
+
+	totalPointsChan := make(chan int, len(queryData))
+
+	if maxThread > len(queryData) {
+		semaphore = make(chan struct{}, len(queryData))
+	} else {
+		semaphore = make(chan struct{}, maxThread)
+	}
+
+	switch selectedTools {
 	case 1:
 		for {
-			for j, query := range queryData {
+			for index, query := range queryData {
 				wg.Add(1)
-				go processAccount(j, query)
+				account := &Account{
+					queryData: query,
+				}
+
+				account.parsingQueryData()
+
+				go account.worker(&wg, &semaphore, &totalPointsChan, index, query, proxyList, walletList)
 			}
-			wg.Wait() // Tunggu semua goroutine selesai
+			wg.Wait()
+			close(totalPointsChan)
+
+			var totalPoints int
+
+			for points := range totalPointsChan {
+				totalPoints += points
+			}
+
+			tools.Logger("success", fmt.Sprintf("Total Points All Account: %v", totalPoints))
+
+			randomSleep := tools.RandomNumber(config.Int("RANDOM_SLEEP.MIN"), config.Int("RANDOM_SLEEP.MAX"))
+
+			tools.Logger("info", fmt.Sprintf("Launch Bot Finished | Sleep %vs Before Next Lap...", randomSleep))
+
+			time.Sleep(time.Duration(randomSleep) * time.Second)
 		}
 	case 2:
-		for j, query := range queryData {
+		for index, query := range queryData {
 			wg.Add(1)
-			go processAccount(j, query)
+			account := &Account{
+				queryData: query,
+			}
+
+			account.parsingQueryData()
+
+			go account.worker(&wg, &semaphore, &totalPointsChan, index, query, proxyList, walletList)
 		}
-		wg.Wait() // Tunggu semua goroutine selesai, lalu program selesai
+		wg.Wait()
 	}
 }
