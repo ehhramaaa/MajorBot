@@ -25,6 +25,9 @@ func PrintLogo() {
 `)
 
 	levelColor.Println("ρσωєяє∂ ву: ѕкιвι∂ι ѕιgмα ¢σ∂є")
+
+	levelColor = color.New(color.FgRed)
+	levelColor.Println("[!] All risks are your responsibility. This tool is intended for educational purposes and to make your life easier.....")
 }
 
 func Logger(level, message string) {

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gookit/config/v2"
 	"golang.org/x/net/proxy"
 )
 
@@ -73,7 +74,7 @@ func (c *Client) setProxy() error {
 				Timeout:   15 * time.Second,
 			}
 
-			return fmt.Errorf("proxy failed (status: %v)", res.StatusCode)
+			return err
 		}
 		defer res.Body.Close()
 
@@ -126,7 +127,7 @@ func (c *Client) setProxy() error {
 }
 
 func (c *Client) checkIp() (map[string]interface{}, error) {
-	result, err := c.makeRequest("GET", "https://ipinfo.io/json", nil)
+	result, err := c.makeRequest("GET", fmt.Sprintf("https://ipinfo.io/json?token=%v", config.String("IPINFO_TOKEN")), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error: %v", err)
 	}

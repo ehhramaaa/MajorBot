@@ -1,23 +1,36 @@
-# Gunakan image Go berbasis Alpine
-FROM golang:alpine
+################
+# BUILD BINARY #
+################
 
-# Set working directory
+FROM golang:latest AS builder
+
 WORKDIR /app
-
-# Salin file go mod dan sum
-COPY go.mod go.sum ./
-
-# Download dependensi
-RUN go mod download
-
-# Salin kode sumber
 COPY . .
 
-# Build aplikasi
-RUN go build -o main
+# Download dependencies and verify
+RUN go mod download
+RUN go mod verify
 
-# Setting Permission
-RUN chmod +x main
+# Build the Go binary with the specified flags
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/MajorBot .
 
-# Jalankan aplikasi
-CMD ["./main", "-c", "1"]
+#####################
+# FINAL IMAGE #
+#####################
+
+FROM alpine:3.16
+
+# Set working directory in the final image
+WORKDIR /app
+
+# Copy the binary from the builder stage
+COPY --from=builder /app/MajorBot /app/
+
+# Copy the configs directory from the build context
+COPY . /app/
+
+# Ensure the binary has execution permissions
+RUN chmod +x /app/MajorBot
+
+# Set the entrypoint for the container
+CMD ["./MajorBot", "-c", "1"]

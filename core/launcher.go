@@ -122,7 +122,9 @@ func (account *Account) worker(wg *sync.WaitGroup, semaphore *chan struct{}, tot
 		tools.Logger("error", fmt.Sprintf("Failed to check ip: %v", err))
 	}
 
-	tools.Logger("success", fmt.Sprintf("| %s | Ip: %s | City: %s | Country: %s | Provider: %s", account.username, infoIp["ip"].(string), infoIp["city"].(string), infoIp["country"].(string), infoIp["org"].(string)))
+	if infoIp != nil {
+		tools.Logger("success", fmt.Sprintf("| %s | Ip: %s | City: %s | Country: %s | Provider: %s", account.username, infoIp["ip"].(string), infoIp["city"].(string), infoIp["country"].(string), infoIp["org"].(string)))
+	}
 
 	if len(walletList) > 0 {
 		account.walletAddress = walletList[index]
