@@ -2,6 +2,7 @@
 query.txt
 wallet_address.txt
 proxy.txt
+build
 
 # Mengabaikan folder build
 raw/
