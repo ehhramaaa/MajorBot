@@ -10,8 +10,6 @@ import (
 )
 
 func main() {
-
-	// add driver for support yaml content
 	config.AddDriver(yaml.Driver)
 
 	err := config.LoadFiles("configs/config.yml")

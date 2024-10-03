@@ -139,6 +139,7 @@ func (account *Account) worker(wg *sync.WaitGroup, semaphore *chan struct{}, tot
 }
 
 func LaunchBot(selectedTools int) {
+	defer tools.HandleRecover()
 	queryPath := "configs/query.txt"
 	proxyPath := "configs/proxy.txt"
 	walletAddressPath := "configs/wallet_address.txt"

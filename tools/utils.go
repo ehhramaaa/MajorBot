@@ -7,11 +7,17 @@ import (
 	"os"
 )
 
-func HandleRecover() {
+func ExitRecover() {
 	if r := recover(); r != nil {
 		Logger("error", fmt.Sprintf("%v", r))
 		Logger("info", "Press Enter to exit...")
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
+	}
+}
+
+func HandleRecover() {
+	if r := recover(); r != nil {
+		Logger("error", fmt.Sprintf("%v", r))
 	}
 }
 

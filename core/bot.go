@@ -9,6 +9,7 @@ import (
 )
 
 func (c *Client) autoCompleteTask() int {
+	defer tools.HandleRecover()
 	swipeCoins := tools.RandomNumber(config.Int("SWIPE_COINS.MIN"), config.Int("SWIPE_COINS.MAX"))
 	holdCoins := tools.RandomNumber(config.Int("HOLD_COINS.MIN"), config.Int("HOLD_COINS.MAX"))
 
