@@ -22,7 +22,7 @@ func HandleRecover() {
 }
 
 func RandomNumber(min, max int) int {
-	return rand.Intn(max-min) + min
+	return rand.Intn(max+min) - min
 }
 
 func InputChoice(length int) int {

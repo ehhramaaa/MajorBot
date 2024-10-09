@@ -131,9 +131,8 @@ func (account *Account) worker(wg *sync.WaitGroup, semaphore *chan struct{}, tot
 		client.connectWallet()
 	} else {
 		points = client.autoCompleteTask()
+		*totalPointsChan <- points
 	}
-
-	*totalPointsChan <- points
 
 	<-*semaphore
 }
@@ -182,8 +181,6 @@ func LaunchBot(selectedTools int) {
 		}
 	}
 
-	totalPointsChan := make(chan int, len(queryData))
-
 	if maxThread > len(queryData) {
 		semaphore = make(chan struct{}, len(queryData))
 	} else {
@@ -193,6 +190,8 @@ func LaunchBot(selectedTools int) {
 	switch selectedTools {
 	case 1:
 		for {
+			totalPointsChan := make(chan int, len(queryData))
+
 			for index, query := range queryData {
 				wg.Add(1)
 				account := &Account{
@@ -203,8 +202,11 @@ func LaunchBot(selectedTools int) {
 
 				go account.worker(&wg, &semaphore, &totalPointsChan, index, query, proxyList, walletList)
 			}
-			wg.Wait()
-			close(totalPointsChan)
+
+			go func() {
+				wg.Wait()
+				close(totalPointsChan)
+			}()
 
 			var totalPoints int
 
@@ -229,7 +231,7 @@ func LaunchBot(selectedTools int) {
 
 			account.parsingQueryData()
 
-			go account.worker(&wg, &semaphore, &totalPointsChan, index, query, proxyList, walletList)
+			go account.worker(&wg, &semaphore, nil, index, query, proxyList, walletList)
 		}
 		wg.Wait()
 	}

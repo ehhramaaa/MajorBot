@@ -55,7 +55,7 @@ func (c *Client) setProxy() error {
 		}
 
 		// Test the proxy connection by making a request
-		req, err := http.NewRequest("GET", "https://ipinfo.io/json", nil) // Test with a simple request
+		req, err := http.NewRequest("GET", "https://google.com", nil) // Test with a simple request
 		if err != nil {
 			// Fallback to no proxy
 			c.httpClient = &http.Client{
